@@ -1,9 +1,11 @@
 import openai
 from dotenv import load_dotenv
 import os
+import anthropic
 
 load_dotenv()
 api_key = os.getenv("OPEN_AI_KEY")
+anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
 
 client = openai.OpenAI(api_key=api_key)  # instantiate the client (new SDK format)
 
@@ -43,6 +45,22 @@ def generateChatResponse(prompt):
     )
     return response.choices[0].message.content
 
+def generateAnthropicPrompt(prompt):
+    client = anthropic.Anthropic(api_key=anthropic_api_key)
+
+    message = client.messages.create(
+        model="claude-opus-4-20250514",  # Use the correct up-to-date model name
+        max_tokens=1024,
+        messages=[
+            {"role": "user", "content": prompt}
+        ]
+    )
+    return message.content[0].text
+
+def generateAnthropicResponse(prompt):
+    guardrails = "Generate a similar prompt based on the following input. Only return the prompt, numbered. Do not include any explanation, extra text before or after the responses."
+    result = generateAnthropicPrompt(guardrails + prompt)
+
 def generateResponses(prompt):
 
     responses = [] 
@@ -52,6 +70,8 @@ def generateResponses(prompt):
     chatPrompt = generateChatPrompt(prompt)
     prompts.append(prompt)
     prompts.append(chatPrompt)
+
+    anthPrompt = generateAnthropicResponse(prompt)
 
 
     for p in prompts:
@@ -72,3 +92,5 @@ responses = generateResponses(prompt)
 print("\n--- ChatGPT Responses ---")
 for i, r in enumerate(responses, 1):
     print(f"\nResponse {i}:\n{r}")
+
+print("anth" + generateAnthropicResponse(prompt))
