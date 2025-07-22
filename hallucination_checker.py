@@ -1,8 +1,14 @@
 ## John and Arjun
 import openai
 import re
+from dotenv import load_dotenv
+import os   
+
+## load in api keys
+load_dotenv()
+openai_api_key = os.getenv("OPENAI_API_KEY")
 # Set up OpenAI client
-client = openai.OpenAI(api_key="YOUR_KEY")  # Replace with your actual key
+client = openai.OpenAI(api_key=openai_api_key)  # Replace with your actual key
 def score_responses_for_hallucination():
     prompt = "What is the capital of Australia?"
     reference = "The capital city of Australia is Canberra."
@@ -41,7 +47,7 @@ Rate the factual accuracy of the response out of 100. Respond only with the numb
 
             score_str = getattr(chat_response.choices[0].message, 'content', '').strip() \
             if getattr(chat_response, 'choices', None) else ''
-            
+
             # Try to extract a number from the response
             match = re.search(r'\b(\d{1,3})\b', score_str)
             if match:
