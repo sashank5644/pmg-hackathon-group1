@@ -2,7 +2,8 @@
 import openai
 import re
 from dotenv import load_dotenv
-import os   
+import os
+import numpy as np
 
 ## load in api keys
 load_dotenv()
@@ -23,6 +24,7 @@ def score_responses_for_hallucination():
         "where 100 means the response has no hallucinations and is fully supported by the reference or prompt, "
         "and lower scores indicate more hallucinations. "
         "Respond only with the number (e.g., '87')."
+        "Please use semantic similarity to determine the score, as we want a smooth gradient of scores rather than binary correctness. "
     )
     results = {}
     for label, response_text in responses.items():
@@ -35,20 +37,20 @@ Response:
 Rate the factual accuracy of the response out of 100. Respond only with the number."""
         try:
             chat_response = client.chat.completions.create(
-                model="gpt-4",
+                model="o3",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                temperature=0
+                temperature=1
             )
             
             
-
             score_str = getattr(chat_response.choices[0].message, 'content', '').strip() \
             if getattr(chat_response, 'choices', None) else ''
 
             # Try to extract a number from the response
+            print(score_str)
             match = re.search(r'\b(\d{1,3})\b', score_str)
             if match:
                 score = min(max(int(match.group(1)), 0), 100)  # Clamp between 0–100
@@ -60,6 +62,8 @@ Rate the factual accuracy of the response out of 100. Respond only with the numb
             score = 50
         results[label] = f"{score}/100"
     return results
+
+
 # Run the example
 if __name__ == "__main__":
     scores = score_responses_for_hallucination()
