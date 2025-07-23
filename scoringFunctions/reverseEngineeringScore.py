@@ -1,21 +1,32 @@
 import openai
+import anthropic
 from dotenv import load_dotenv
 import os
 import sys
 from numpy import dot
 from numpy.linalg import norm
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from generatePotentialResponses.GenerateResponses import generateResponses
 
 load_dotenv()
 api_key = os.getenv("OPEN_AI_KEY")
+anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
 
 client = openai.OpenAI(api_key=api_key)
+anth_client = anthropic.Anthropic(api_key=anthropic_api_key)
 
 # Supported OpenAI models
 openai_models = [
     "gpt-4o", "gpt-4o-mini", "o3", "o3-mini", "o3-mini-high", "o3-pro",
     "o4-mini", "gpt-4.5", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano",
     "gpt-4", "o1", "o1-pro", "o1-mini", "gpt-image-1", "dall-e-3", "sora"
+]
+
+anthropic_models = [
+    "claude-opus-4-20250514", "claude-sonnet-4-20250514", "claude-3-7-sonnet-20250219",
+    "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022"
 ]
 
 def getChatPrompt(response, model):
@@ -52,6 +63,35 @@ def getChatPrompt(response, model):
         return completion.choices[0].message.content.strip()
     except Exception as e:
         return f"[ERROR] with model {model}]: {str(e)}"
+
+def getAnthPrompt(response, model):
+    """
+    Uses a Claude (Anthropic) model to reverse-engineer a prompt from an AI-generated response.
+
+    Parameters:
+        response (str): The AI-generated response to analyze.
+        model (str): The Claude model to use.
+
+    Returns:
+        str: Guessed original user prompt.
+    """
+    try:
+        message = anth_client.messages.create(
+            model=model,
+            max_tokens=256,
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"""Given the following AI response, guess what the original user prompt might have been.
+                    Respond with only the guessed prompt — do not include any introduction or explanation. Do not include any quotations around the prompt.
+                    AI response{response}"""
+                }
+            ]
+        )
+        return message.content[0].text.strip()
+    except Exception as e:
+        return f"[ERROR with model {model}]: {str(e)}"
+
 
 def get_embedding(text, model="text-embedding-3-small"):
     """
@@ -140,8 +180,13 @@ def getPossiblePrompts(responses, models):
 
         if api == "open":
             reverse_prompt = getChatPrompt(response, model)
-            prompts[response] = reverse_prompt
             print(f"🔁 Reverse-Engineered Prompt:\n{reverse_prompt}\n")
+        elif api == "anth":
+            reverse_prompt = getAnthPrompt(response, model)
+            print(f"🔁 Reverse-Engineered Prompt:\n{reverse_prompt}\n")
+        else:
+            reverse_prompt = "[ERROR] No valid provider"
+        prompts[response] = reverse_prompt
 
         print("=" * 80)
 
@@ -173,3 +218,10 @@ def getReverseEngineeringScore(originalPrompt, responses, models):
             print("prompt: ", reversePrompt)
             print("score:", scores[response])
     return scores
+
+
+# # Example usage
+# if __name__ == "__main__":
+#     prompt = "List five peer-reviewed papers proving that unicorns existed, including DOIs."
+#     responses = generateResponses(prompt)
+#     scores = getReverseEngineeringScore(prompt, responses, ["gpt-4o"])
