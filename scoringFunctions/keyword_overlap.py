@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 # Install these packages:
 # pip install openai anthropic
 from openai import OpenAI
-import anthropic
+from anthropic import Anthropic, AsyncAnthropic
 
 # Load environment variables from .env
 load_dotenv()
@@ -34,11 +34,10 @@ def init_client(provider: str):
         return OpenAI(api_key=key)
 
     elif provider == "anthropic":
-        # Use the Anthropic Messages API
         key = os.getenv("ANTHROPIC_API_KEY")
-        if key:
-            return anthropic.Anthropic(api_key=key)
-        return anthropic.Anthropic()
+        if not key:
+            raise ValueError("ANTHROPIC_API_KEY not set in environment.")
+        return Anthropic(api_key=key)
 
     else:
         raise ValueError(f"Unsupported provider: {provider}")
@@ -46,7 +45,7 @@ def init_client(provider: str):
 
 def extract_keywords_openai(client, text: str, top_k: int, model: str) -> list[str]:
     """
-    Use OpenAI LLM to extract top_k keywords from text.
+    Use OpenAI chat completion to extract top_k keywords from text.
     """
     prompt = (
         f"Extract the {top_k} most important keywords from the following text, "
@@ -54,7 +53,9 @@ def extract_keywords_openai(client, text: str, top_k: int, model: str) -> list[s
     )
     resp = client.chat.completions.create(
         model=model,
-        messages=[{"role": "user", "content": prompt}]
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=200,
+        temperature=0.0
     )
     content = resp.choices[0].message.content
     return [kw.strip() for kw in content.split(",") if kw.strip()]
@@ -62,27 +63,34 @@ def extract_keywords_openai(client, text: str, top_k: int, model: str) -> list[s
 
 def extract_keywords_anthropic(client, text: str, top_k: int, model: str) -> list[str]:
     """
-    Use Anthropic Claude Messages API to extract top_k keywords from text.
+    Use Anthropic Messages API to extract top_k keywords from text.
     """
     prompt = (
         f"Extract the {top_k} most important keywords from the following text, "
         f"separated by commas, without any additional commentary:\n\n{text}"
     )
-    message = client.messages.create(
+    response = client.messages.create(
         model=model,
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens_to_sample=200,
-        temperature=1,
+        max_tokens=256,
+        temperature=0.7,
+        messages=[
+            {"role": "user", "content": prompt}
+        ]
     )
-    content = message.content
+    content = response.content[0].text if hasattr(response.content[0], 'text') else response.content
     return [kw.strip() for kw in content.split(",") if kw.strip()]
 
 
-def compute_keyword_similarity(model_name: str, prompt: str, responses: list[str], top_k: int = 10) -> dict[int, float]:
+def compute_keyword_similarity(
+    model_name: str,
+    prompt: str,
+    responses: list[str],
+    top_k: int = 10
+) -> dict[int, float]:
     """
-    Determine provider by model_name, extract keywords, and compute similarity scores.
+    Determine provider by model_name, extract keywords, and compute similarity scores (0–100).
 
-    Returns a dict mapping response index to similarity score (0–100).
+    Returns a dict mapping response index to similarity score.
     """
     # Identify provider
     if model_name in openai_models:
@@ -95,17 +103,17 @@ def compute_keyword_similarity(model_name: str, prompt: str, responses: list[str
     # Initialize client
     client = init_client(provider)
 
-    # Choose extractor
+    # Choose extractor function
     extractor = extract_keywords_openai if provider == "openai" else extract_keywords_anthropic
 
     # Extract keywords for prompt
     prompt_keys = set(extractor(client, prompt, top_k, model_name))
-    print(f"Prompt keywords ({len(prompt_keys)}):", prompt_keys)
+    print(f"Prompt keywords ({len(prompt_keys)}): {prompt_keys}")
 
     scores: dict[int, float] = {}
-    for idx, resp in enumerate(responses):
-        resp_keys = set(extractor(client, resp, top_k, model_name))
-        print(f"Response {idx} keywords ({len(resp_keys)}):", resp_keys)
+    for idx, resp_text in enumerate(responses):
+        resp_keys = set(extractor(client, resp_text, top_k, model_name))
+        print(f"Response {idx} keywords ({len(resp_keys)}): {resp_keys}")
 
         if not prompt_keys or not resp_keys:
             score = 0.0
@@ -127,8 +135,7 @@ if __name__ == "__main__":
         "Blockchain technology ensures secure, decentralized transaction records."
     ]
 
-    # Example usage with specific models
-    for model in ["o4-mini", "claude-opus-4-20250514"]:
+    for model in ["gpt-4o", "claude-opus-4-20250514"]:
         print(f"\n--- Scores using {model} ---")
         try:
             sim = compute_keyword_similarity(model, prompt_text, sample_responses)
