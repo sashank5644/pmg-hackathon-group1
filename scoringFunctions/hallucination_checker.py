@@ -10,7 +10,9 @@ load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 # Set up OpenAI client
 client = openai.OpenAI(api_key=openai_api_key)  # Replace with your actual key
-def score_responses_for_hallucination():
+def score_responses_for_hallucination(prompt, responses, models):
+    ## these were used for testing
+    '''
     prompt = "Who is the famous USA President Jeffery Dahmer?"
     responses = {
         "Response A": "The capital of Australia is Sydney.",
@@ -22,6 +24,7 @@ def score_responses_for_hallucination():
         "Response G": "Water is wet.",
         "Response H": "Jeffwey Danmer was not besident of Americuh",
     }
+    '''
     system_prompt = (
         "You will be given a prompt and a set of responses that an LLM could generate for that prompt. Please score each response based on its" \
         "factual accuracy. The score should be a number between 0 and 100, where 0 means completely inaccurate and 100 means completely accurate." \
@@ -48,6 +51,7 @@ Response:
 Rate the factual accuracy of the response out of 100. Respond only with the number."""
         try:
             chat_response = client.chat.completions.create(
+                ## currently set to use o3 model
                 model="o3",
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -61,7 +65,7 @@ Rate the factual accuracy of the response out of 100. Respond only with the numb
             if getattr(chat_response, 'choices', None) else ''
 
             # Try to extract a number from the response
-            results[label] = f"{score_str}/100"
+            results[response_text] = score_str
         except Exception as e:
             print(f"[ERROR] Scoring failed for {label}: {e}")
        
@@ -70,8 +74,8 @@ Rate the factual accuracy of the response out of 100. Respond only with the numb
 
 # Run the example
 def getHallucinationCheckerScore(prompt, responses, models):
-    scores = score_responses_for_hallucination()
-    for label, score in scores.items():
+    results = score_responses_for_hallucination(prompt, responses, models)
+    for label, score in results.items():
         print(f"{label}: {score}")
-    return scores
+    return results
  
