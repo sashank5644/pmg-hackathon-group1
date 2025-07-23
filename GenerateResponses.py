@@ -21,7 +21,7 @@ def generateChatPrompt(prompt):
             }
         ],
         temperature=0.6,
-        max_tokens=100,
+        max_tokens=200,
     )
     return response.choices[0].message.content
 
@@ -39,7 +39,7 @@ def generateChatResponse(prompt):
             }
         ],
         temperature=0.7,
-        max_tokens=300,
+        max_tokens=400,
     )
     return response.choices[0].message.content
 
@@ -64,11 +64,12 @@ def generateResponses(prompt):
     #Step 2: have each model return responses based on these prompts
     # - chat 4.o returns 2 responses per prompt
     # - claude does the same 
+    print("PROMPTS: ", prompts)
     return responses
 
-prompt = "Summarize the benefits of drinking water regularly."
-responses = generateResponses(prompt)
+# prompt = "Summarize the benefits of drinking water regularly."
+# responses = generateResponses(prompt)
 
-print("\n--- ChatGPT Responses ---")
-for i, r in enumerate(responses, 1):
-    print(f"\nResponse {i}:\n{r}")
+# print("\n--- ChatGPT Responses ---")
+# for i, r in enumerate(responses, 1):
+#     print(f"\nResponse {i}:\n{r}")
