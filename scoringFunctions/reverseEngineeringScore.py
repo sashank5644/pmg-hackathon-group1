@@ -5,9 +5,6 @@ import sys
 from numpy import dot
 from numpy.linalg import norm
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from generatePotentialResponses.GenerateResponses import generateResponses
 
 load_dotenv()
 api_key = os.getenv("OPEN_AI_KEY")
@@ -176,10 +173,3 @@ def getReverseEngineeringScore(originalPrompt, responses, models):
             print("prompt: ", reversePrompt)
             print("score:", scores[response])
     return scores
-
-
-# # Example usage
-# if __name__ == "__main__":
-#     prompt = "List five peer-reviewed papers proving that unicorns existed, including DOIs."
-#     responses = generateResponses(prompt)
-#     scores = getReverseEngineeringScore(prompt, responses, ["gpt-4o"])
