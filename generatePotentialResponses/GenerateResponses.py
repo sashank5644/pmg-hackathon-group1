@@ -42,7 +42,6 @@ def generateChatPrompt(prompt, model):
                 "content": f"Rewrite the following prompt to make it better: {prompt} Respond with only the guessed prompt — do not include any introduction or explanation. Do not include any quotations around the prompt. "
             }
         ],
-        temperature=0.6,
         max_tokens=1024,
     )
     return response.choices[0].message.content
@@ -69,7 +68,6 @@ def generateChatResponse(prompt, model):
                 "content": prompt
             }
         ],
-        temperature=0.7,
         max_tokens=1024,
     )
     return response.choices[0].message.content
@@ -144,11 +142,11 @@ def generateResponses(prompt, models):
                 responses.append(response)
             except Exception as e:
                 print(f"[ERROR] OpenAI response failed for model {model}: {e}") 
-        for model in anthropic_models:
-            try:
-                responses.append(generateAnthropicResponse(p, model))
-            except Exception as e:
-                print(f"[ERROR] Anthropic response failed for model {model}: {e}")
+        # for model in anthropic_models:
+        #     try:
+        #         responses.append(generateAnthropicResponse(p, model))
+        #     except Exception as e:
+        #         print(f"[ERROR] Anthropic response failed for model {model}: {e}")
   
     print("PROMPTS: ", prompts)
     return responses
