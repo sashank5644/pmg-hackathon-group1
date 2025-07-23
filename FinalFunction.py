@@ -4,6 +4,7 @@ import sys
 from generatePotentialResponses.GenerateResponses import generateResponses
 from scoringFunctions.reverseEngineeringScore import getReverseEngineeringScore
 from scoringFunctions.LLMJudge import getLLMJudgeScore
+from scoringFunctions.hallucination_checker import getHallucinationCheckerScore
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -38,18 +39,21 @@ def returnBestResponse(prompt, LLMs):
     # Step 2: calculate scoring dictionaries for each response according to each metric. 
     reverseEngineeringScores = getReverseEngineeringScore(prompt, potentialResponses, LLMs)
     LLMJudgeScores = getLLMJudgeScore(prompt, potentialResponses, LLMs)
+    hallucinationCheckerScores = getHallucinationCheckerScore(prompt, potentialResponses, LLMs)
     #TODO: add other scorings here from other metrics
 
     # Step 3: aggregate scores and determine best score 
     scoreDicts = {
         "reverse": reverseEngineeringScores,
         "LLMJudge": LLMJudgeScores 
+        "hallucination": hallucinationCheckerScores
         #TODO: add other scoring dictionaries 
     }
 
     weights = {
         "reverse": 0.6,
         "LLMJudge": 0.4
+        "hallucination": 0
         #TODO: change weight distribution when we add other scoring dictionaries 
     }
 
