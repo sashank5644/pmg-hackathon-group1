@@ -33,7 +33,7 @@ def aggregateScores(scoreDicts, weights):
 def returnBestResponse(prompt, LLMs):
 
     # Step 1: generate potential responses. 
-    potentialResponses = generateResponses(prompt)
+    potentialResponses = generateResponses(prompt, LLMs)
 
     # Step 2: calculate scoring dictionaries for each response according to each metric. 
     reverseEngineeringScores = getReverseEngineeringScore(prompt, potentialResponses, LLMs)
