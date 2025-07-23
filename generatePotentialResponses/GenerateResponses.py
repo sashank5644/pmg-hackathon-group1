@@ -10,7 +10,17 @@ anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
 client = openai.OpenAI(api_key=api_key)  # instantiate the client (new SDK format)
 anth_client = anthropic.Anthropic(api_key=anthropic_api_key)
 
-def generateChatPrompt(prompt):
+anthropic_models = [
+    "claude-opus-4-20250514", "claude-sonnet-4-20250514", "claude-3-7-sonnet-20250219",
+    "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022"
+]
+openai_models = [
+    "gpt-4o", "gpt-4o-mini", "o3", "o3-mini", "o3-mini-high", "o3-pro",
+    "o4-mini", "gpt-4.5", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano",
+    "gpt-4", "o1", "o1-pro", "o1-mini", "gpt-image-1", "dall-e-3", "sora"
+]
+
+def generateChatPrompt(prompt, model):
     """
     Uses GPT-4 to rewrite a given prompt to be more clear, engaging, or effective.
 
@@ -21,7 +31,7 @@ def generateChatPrompt(prompt):
         str: Rewritten version of the prompt. 
     """
     response = client.chat.completions.create(
-        model="gpt-4",
+        model=model,
         messages=[
             {
                 "role": "system",
@@ -37,7 +47,7 @@ def generateChatPrompt(prompt):
     )
     return response.choices[0].message.content
 
-def generateChatResponse(prompt):
+def generateChatResponse(prompt, model):
     """
     Uses GPT-4 to generate a response to a user prompt.
 
@@ -48,7 +58,7 @@ def generateChatResponse(prompt):
         str: Generated model response. 
     """
     response = client.chat.completions.create(
-        model="gpt-4",
+        model=model,
         messages=[
             {
                 "role": "system",
@@ -64,7 +74,7 @@ def generateChatResponse(prompt):
     )
     return response.choices[0].message.content
 
-def generateAnthropicPrompt(prompt):
+def generateAnthropicPrompt(prompt, model):
     """
     Uses Claude to rewrite a prompt for better clarity or engagement. 
 
@@ -75,7 +85,7 @@ def generateAnthropicPrompt(prompt):
         str: Rewritten prompt by Claude.
     """
     message = anth_client.messages.create(
-        model="claude-opus-4-20250514",  # Use the correct up-to-date model name
+        model=model,
         max_tokens=1024,
         messages=[
             {"role": "user", "content": "Rewrite the following prompt to make it better:" + prompt + "Respond with only the guessed prompt — do not include any introduction or explanation. Do not include any quotations around the prompt. "}
@@ -83,7 +93,7 @@ def generateAnthropicPrompt(prompt):
     )
     return message.content[0].text
 
-def generateAnthropicResponse(prompt):
+def generateAnthropicResponse(prompt, model):
     """
     Uses Claude (Anthropic) to generate a response to a user prompt.
 
@@ -94,12 +104,12 @@ def generateAnthropicResponse(prompt):
         str: Model-generated response. 
     """
     message = anth_client.messages.create(
-        model="claude-opus-4-20250514",  # Use the correct up-to-date model name
+        model=model,
         max_tokens=1024,
         messages=[
             {"role": "user", "content": "You are a helpful assistant that answers questions or completes tasks in a clear, concise, and useful manner. Answer this prompt: " + prompt}
         ]
-    )
+    ) 
     return message.content[0].text
 
 def generateResponses(prompt):
@@ -108,17 +118,35 @@ def generateResponses(prompt):
     prompts = [] 
 
     # Step 1: generate possible responses from chatgpt 
-    chatPrompt = generateChatPrompt(prompt)
-    anthPrompt = generateAnthropicPrompt(prompt)
+    # chatPrompt = generateChatPrompt(prompt)
+    # anthPrompt = generateAnthropicPrompt(prompt)
     prompts.append(prompt)
-    prompts.append(chatPrompt)
-    prompts.append(anthPrompt)
-
+    for model in openai_models:
+        try:
+            chatPrompt = generateChatPrompt(prompt, model)
+            prompts.append(chatPrompt)
+        except Exception as e:
+            print(f"[ERROR] OpenAI prompt generation failed for model {model}: {e}")
+            chatPrompt = prompt
+    for model in anthropic_models:
+        try:
+            anthPrompt = generateAnthropicPrompt(prompt, model)
+            prompts.append(anthPrompt)
+        except Exception as e:
+            print(f"[ERROR] Anthropic prompt generation failed for model {model}: {e}")
+            anthPrompt = prompt
 
     for p in prompts:
-        for _ in range(2):
-            responses.append(generateChatResponse(p))
-            responses.append(generateAnthropicResponse(p))
+        for model in openai_models:
+            try:
+                responses.append(generateChatResponse(p, model))
+            except Exception as e:
+                print(f"[ERROR] OpenAI response failed for model {model}: {e}") 
+        for model in anthropic_models:
+            try:
+                responses.append(generateAnthropicResponse(p, model))
+            except Exception as e:
+                print(f"[ERROR] Anthropic response failed for model {model}: {e}")
     
 
     # - claude returns 1 new prompt 
