@@ -11,6 +11,15 @@ client = openai.OpenAI(api_key=api_key)  # instantiate the client (new SDK forma
 anth_client = anthropic.Anthropic(api_key=anthropic_api_key)
 
 def generateChatPrompt(prompt):
+    """
+    Uses GPT-4 to rewrite a given prompt to be more clear, engaging, or effective.
+
+    Parameters:
+        prompt (str): The original user input prompt. 
+
+    Returns:
+        str: Rewritten version of the prompt. 
+    """
     response = client.chat.completions.create(
         model="gpt-4",
         messages=[
@@ -20,15 +29,24 @@ def generateChatPrompt(prompt):
             },
             {
                 "role": "user",
-                "content": f"Rewrite the following prompt to make it better: {prompt}"
+                "content": f"Rewrite the following prompt to make it better: {prompt} Respond with only the guessed prompt — do not include any introduction or explanation. Do not include any quotations around the prompt. "
             }
         ],
         temperature=0.6,
-        max_tokens=200,
+        max_tokens=1024,
     )
     return response.choices[0].message.content
 
 def generateChatResponse(prompt):
+    """
+    Uses GPT-4 to generate a response to a user prompt.
+
+    Parameters:
+        prompt (str): The prompt to respond to. 
+
+    Returns:
+        str: Generated model response. 
+    """
     response = client.chat.completions.create(
         model="gpt-4",
         messages=[
@@ -42,26 +60,44 @@ def generateChatResponse(prompt):
             }
         ],
         temperature=0.7,
-        max_tokens=400,
+        max_tokens=1024,
     )
     return response.choices[0].message.content
 
 def generateAnthropicPrompt(prompt):
+    """
+    Uses Claude to rewrite a prompt for better clarity or engagement. 
+
+    Parameters: 
+        prompt (str): The original user input prompt. 
+
+    Returns:
+        str: Rewritten prompt by Claude.
+    """
     message = anth_client.messages.create(
         model="claude-opus-4-20250514",  # Use the correct up-to-date model name
         max_tokens=1024,
         messages=[
-            {"role": "user", "content": "rewrite the following prompt to make it better to put into an ai model:" + prompt}
+            {"role": "user", "content": "Rewrite the following prompt to make it better:" + prompt + "Respond with only the guessed prompt — do not include any introduction or explanation. Do not include any quotations around the prompt. "}
         ]
     )
     return message.content[0].text
 
 def generateAnthropicResponse(prompt):
+    """
+    Uses Claude (Anthropic) to generate a response to a user prompt.
+
+    Parameters: 
+        prompt (str)" The prompt to respond to.
+
+    Returns:
+        str: Model-generated response. 
+    """
     message = anth_client.messages.create(
         model="claude-opus-4-20250514",  # Use the correct up-to-date model name
         max_tokens=1024,
         messages=[
-            {"role": "user", "content": "You are a helpful AI assistant that answers questions or completes tasks in a clear, concise, and useful manner. Answer this prompt: " + prompt}
+            {"role": "user", "content": "You are a helpful assistant that answers questions or completes tasks in a clear, concise, and useful manner. Answer this prompt: " + prompt}
         ]
     )
     return message.content[0].text
