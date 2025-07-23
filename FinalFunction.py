@@ -52,7 +52,7 @@ def returnBestResponse(prompt, LLMs):
 
     weights = {
         "reverse": 0.6,
-        "LLMJudge": 0.4
+        "LLMJudge": 0.4,
         "hallucination": 0
         #TODO: change weight distribution when we add other scoring dictionaries 
     }

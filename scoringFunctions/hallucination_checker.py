@@ -69,8 +69,9 @@ Rate the factual accuracy of the response out of 100. Respond only with the numb
 
 
 # Run the example
-if __name__ == "__main__":
+def getHallucinationCheckerScore(prompt, responses, models):
     scores = score_responses_for_hallucination()
-    print("\nHallucination Scores:")
     for label, score in scores.items():
         print(f"{label}: {score}")
+    return scores
+ 
