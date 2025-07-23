@@ -1,15 +1,23 @@
-import os
-from dotenv import load_dotenv
-
-# Install these packages:
-# pip install openai anthropic
-from openai import OpenAI
+import openai
 import anthropic
+from dotenv import load_dotenv
+import os
+import sys
+from numpy import dot
+from numpy.linalg import norm
 
-# Load environment variables from .env
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from generatePotentialResponses.GenerateResponses import generateResponses
+
 load_dotenv()
+api_key = os.getenv("OPEN_AI_KEY")
+anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
 
-# Supported model lists
+client = openai.OpenAI(api_key=api_key)
+anth_client = anthropic.Anthropic(api_key=anthropic_api_key)
+
+# Supported OpenAI models
 openai_models = [
     "gpt-4o", "gpt-4o-mini", "o3", "o3-mini", "o3-mini-high", "o3-pro",
     "o4-mini", "gpt-4.5", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano",
@@ -17,127 +25,203 @@ openai_models = [
 ]
 
 anthropic_models = [
-    "claude-opus-4-20250514", "claude-sonnet-4-20250514",
-    "claude-3-7-sonnet-20250219", "claude-3-5-sonnet-20241022",
-    "claude-3-5-haiku-20241022"
+    "claude-opus-4-20250514", "claude-sonnet-4-20250514", "claude-3-7-sonnet-20250219",
+    "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022"
 ]
 
-
-def init_client(provider: str):
+def getChatPrompt(response, model):
     """
-    Initialize the appropriate client based on provider name.
+    Uses a language model to reverse-engineer the likely user prompt that could have produced a given response. 
+
+    Parameters: 
+        response (str): the AI-generated response to analyze.
+        model (str): Model to use for the reverse-prompting. 
+
+    Returns: 
+        str: a guessed version of the original prompt. 
     """
-    if provider == "openai":
-        key = os.getenv("OPENAI_API_KEY")
-        if not key:
-            raise ValueError("OPENAI_API_KEY not set in environment.")
-        return OpenAI(api_key=key)
+    try:
+        completion = client.chat.completions.create(
+            model=model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant that analyzes model responses and tries to guess the original user prompt that could have generated the response."
+                },
+                {
+                    "role": "user",
+                    "content": f"""Given the following AI response, guess what the original user prompt might have been.
+                    Respond with only the guessed prompt — do not include any introduction or explanation. Do not include any quotations around the prompt. 
 
-    if provider == "anthropic":
-        key = os.getenv("ANTHROPIC_API_KEY")
-        if key:
-            return anthropic.Anthropic(api_key=key)
-        return anthropic.Anthropic()
+                    AI response:
+                    {response}"""
+                }
+            ],
+            temperature=0.6,
+            max_tokens=100,
+        )
+        return completion.choices[0].message.content.strip()
+    except Exception as e:
+        return f"[ERROR] with model {model}]: {str(e)}"
 
-    raise ValueError(f"Unsupported provider: {provider}")
-
-# Instantiate an Anthropic client for helper functions
-anth_client = init_client("anthropic")
-
-
-def extract_keywords_openai(client, text: str, top_k: int, model: str) -> list[str]:
-    prompt = (
-        f"Extract the {top_k} most important keywords from the following text, "
-        f"separated by commas, without any additional commentary:\n\n{text}"
-    )
-    resp = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "user", "content": prompt}]
-    )
-    content = resp.choices[0].message.content
-    return [kw.strip() for kw in content.split(",") if kw.strip()]
-
-
-def extract_keywords_anthropic(client, text: str, top_k: int, model: str) -> list[str]:
-    instruction = (
-        f"Extract the {top_k} most important keywords from the following text, "
-        f"separated by commas, without any additional commentary:\n\n{text}"
-    )
-    message = client.messages.create(
-        model=model,
-        messages=[{"role": "user", "content": instruction}],
-        max_tokens_to_sample=200,
-        temperature=1,
-    )
-    return [kw.strip() for kw in message.content.split(",") if kw.strip()]
-
-
-def compute_keyword_similarity(model_name: str, prompt: str, responses: list[str], top_k: int = 10) -> dict[int, float]:
+def getAnthPrompt(response, model):
     """
-    Compute Jaccard-based keyword overlap between prompt and responses using the specified model.
+    Uses a Claude (Anthropic) model to reverse-engineer a prompt from an AI-generated response.
+
+    Parameters:
+        response (str): The AI-generated response to analyze.
+        model (str): The Claude model to use.
+
+    Returns:
+        str: Guessed original user prompt.
     """
-    if model_name in openai_models:
-        provider = "openai"
-    elif model_name in anthropic_models:
-        provider = "anthropic"
-    else:
-        raise ValueError(f"Model '{model_name}' not supported.")
+    try:
+        message = anth_client.messages.create(
+            model=model,
+            max_tokens=256,
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"""Given the following AI response, guess what the original user prompt might have been.
+                    Respond with only the guessed prompt — do not include any introduction or explanation. Do not include any quotations around the prompt.
+                    AI response{response}"""
+                }
+            ]
+        )
+        return message.content[0].text.strip()
+    except Exception as e:
+        return f"[ERROR with model {model}]: {str(e)}"
 
-    client = init_client(provider)
-    extractor = extract_keywords_openai if provider == "openai" else extract_keywords_anthropic
 
-    prompt_keys = set(extractor(client, prompt, top_k, model_name))
-    print(f"Prompt keywords ({len(prompt_keys)}):", prompt_keys)
+def get_embedding(text, model="text-embedding-3-small"):
+    """
+    Converts a string into a numerical vector embedding using OpenAI's embedding model. 
 
+    Parameters: 
+        text (str): The text to embed
+        model (str): The embedding model to use.
+
+    Returns:
+        list[float]: the embedding vector. 
+    """
+    response = client.embeddings.create(
+        input=text,
+        model=model
+    )
+    return response.data[0].embedding
+
+def cosine_similarity(vec1, vec2):
+    """
+    Computes cosine similarity between two vectors.
+
+    Parameters: 
+        vec1, vec2 (list[float]): Input vectors.
+
+    Returns:
+        float: Cosine similarity score between -1 and 1. 
+    """
+    return dot(vec1, vec2) / (norm(vec1) * norm(vec2))
+
+def getSimilarity(inputPrompt, generatedPrompt):
+    """
+    Calculates the semantic similarity between the original and the reversed-engineered prompt. 
+
+    Parameters:
+        inputPrompt (str)" Original user prompt.
+        generatedPrompt (str): Reverse-engineered prompt.
+    
+    Returns:
+        float: Cosine similarity between their embeddings. 
+    """
+    inputEmbedding = get_embedding(inputPrompt)
+    generatedEmbedding = get_embedding(generatedPrompt)
+    
+    similarity = cosine_similarity(inputEmbedding, generatedEmbedding)
+
+    return similarity
+
+def chooseBestReverseModel(models):
+    """
+    Chooses the best available model for reverse-prompting based on preference. 
+
+    Parameters:
+        models (list[str]): List of available model names.
+    
+    Returns: 
+        tuple: (selected_model, "open" or "anthropic" string to indicate provider)
+    """
+    for preferred in ["gpt-4o", "gpt-4", "gpt-4.5", "o3"]:          #TODO: refine this based on best models for reverse engineering. 
+        if preferred in models:
+            return preferred, "open"
+    model = models[0]
+    if model in openai_models:
+        return model, "open"
+    else: 
+        return model, "anth"
+
+def getPossiblePrompts(responses, models):   
+    """
+    Applies reverse-prompting to a list of model responses. 
+
+    Parameters:
+        responses (list[str]): List of AI-generated responses.
+        models (list[str]): List of model names to choose from for reverse prompting. 
+    
+    Returns: 
+        dict: Maps each response to its reverse-engineered prompt. 
+    """
+    prompts = {}
+    model, api = chooseBestReverseModel(models)
+
+    for response in responses:
+        print("\n" + "=" * 80)
+        print(f"🧠 Model Response:\n{response}\n")
+        prompts[response] = {}
+
+        if api == "open":
+            reverse_prompt = getChatPrompt(response, model)
+            print(f"🔁 Reverse-Engineered Prompt:\n{reverse_prompt}\n")
+        elif api == "anth":
+            reverse_prompt = getAnthPrompt(response, model)
+            print(f"🔁 Reverse-Engineered Prompt:\n{reverse_prompt}\n")
+        else:
+            reverse_prompt = "[ERROR] No valid provider"
+        prompts[response] = reverse_prompt
+
+        print("=" * 80)
+
+    return prompts 
+
+
+def getReverseEngineeringScore(originalPrompt, responses, models):
+    """
+    Computes similarity scores bewteen the original prompt and reverse-engineered prompts
+    for a list of AI-generated responses.
+
+    Parameters:
+        originalPrompt (str): the initial user prompt. 
+        responses (list[str]): Responses generated by different LLMs. 
+        models (list[str]): Available model names for reverse engineering. 
+
+    Returns:
+        dict: Maps each response to a scaled similarity score (0-100).
+    """
+    prompts = getPossiblePrompts(responses, models)
     scores = {}
-    for idx, resp in enumerate(responses):
-        resp_keys = set(extractor(client, resp, top_k, model_name))
-        print(f"Response {idx} keywords ({len(resp_keys)}):", resp_keys)
-        score = (len(prompt_keys & resp_keys) / len(prompt_keys) * 100) if prompt_keys and resp_keys else 0.0
-        scores[idx] = round(score, 2)
 
+    for response, reversePrompt in prompts.items():
+        if "[ERROR]" in reversePrompt:
+            similarity = 0.0
+        else:
+            similarity = getSimilarity(originalPrompt, reversePrompt)
+            scores[response] = ((round(similarity, 4) + 1) / 2) * 100 
+            print("prompt: ", reversePrompt)
+            print("score:", scores[response])
     return scores
 
 
-def getAnthPrompt(response: str, model: str) -> str:
-    """
-    Guess the original user prompt from a Claude-generated response.
-    """
-    try:
-        # Use the Anthropic messages API to reverse-engineer the prompt
-        instruction = (
-            f"Given the following AI response, guess what the original user prompt might have been. "
-            f"Respond with only the guessed prompt—no intro, explanation, or quotes.\nAI response: {response}"
-        )
-        message = anth_client.messages.create(
-            model=model,
-            messages=[{"role": "user", "content": instruction}],
-            max_tokens_to_sample=256,
-            temperature=1,
-        )
-        return message.content.strip()
-    except Exception as e:
-        return f"[ERROR with model {model}]: {e}"
-
-
-if __name__ == "__main__":
-    prompt_text = "Explain the advantages of electric vehicles over traditional gasoline cars."
-    sample_responses = [
-        "Electric vehicles have lower operating costs because electricity is cheaper than gasoline.",
-        "They produce zero tailpipe emissions, cutting air pollution and greenhouse gases.",
-        "With regenerative braking, EVs can recapture energy and extend their driving range.",
-        "Blockchain technology ensures secure, decentralized transaction records."
-    ]
-
-    # Example similarity checks
-    for model in ["o4-mini", "claude-opus-4-20250514"]:
-        print(f"\n--- Scores using {model} ---")
-        try:
-            sim = compute_keyword_similarity(model, prompt_text, sample_responses)
-            print("Similarity scores:", sim)
-        except Exception as e:
-            print(f"Error with {model}: {e}")
-
-    # Example reverse prompt
-    rev = getAnthPrompt("Electric vehicles cost less to run.", "claude-opus-4-20250514")
-    print("Guessed prompt:", rev)
+# # Example usage
+# if __name__ == "__main__":
+#     prompt = "List five peer-reviewed papers proving that unicorns existed, including DOIs."
+#     responses = generateResponses(prompt)
+#     scores = getReverseEngineeringScore(prompt, responses, ["gpt-4o"])
