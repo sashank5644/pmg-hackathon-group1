@@ -112,34 +112,36 @@ def generateAnthropicResponse(prompt, model):
     ) 
     return message.content[0].text
 
-def generateResponses(prompt):
+def generateResponses(prompt, models):
+    responses = []
+    prompts = [prompt]  # Start with original prompt
 
-    responses = [] 
-    prompts = [] 
+    for model in models:
+        try:
+            if model in openai_models:
+                rewritten = generateChatPrompt(prompt, model)
+            elif model in anthropic_models:
+                rewritten = generateAnthropicPrompt(prompt, model)
+            else:
+                print(f"[WARNING] Unknown model '{model}' — skipping.")
+                continue
 
-    # Step 1: generate possible responses from chatgpt 
-    # chatPrompt = generateChatPrompt(prompt)
-    # anthPrompt = generateAnthropicPrompt(prompt)
-    prompts.append(prompt)
-    for model in openai_models:
-        try:
-            chatPrompt = generateChatPrompt(prompt, model)
-            prompts.append(chatPrompt)
+            prompts.append(rewritten)
         except Exception as e:
-            print(f"[ERROR] OpenAI prompt generation failed for model {model}: {e}")
-            chatPrompt = prompt
-    for model in anthropic_models:
-        try:
-            anthPrompt = generateAnthropicPrompt(prompt, model)
-            prompts.append(anthPrompt)
-        except Exception as e:
-            print(f"[ERROR] Anthropic prompt generation failed for model {model}: {e}")
-            anthPrompt = prompt
+            print(f"[ERROR] Prompt generation failed for model {model}: {e}")
+            prompts.append(prompt)
 
     for p in prompts:
-        for model in openai_models:
+        for model in models:
             try:
-                responses.append(generateChatResponse(p, model))
+                if model in openai_models:
+                    response = generateChatResponse(p, model)
+                elif model in anthropic_models:
+                    response = generateAnthropicResponse(p, model)
+                else:
+                    continue
+
+                responses.append(response)
             except Exception as e:
                 print(f"[ERROR] OpenAI response failed for model {model}: {e}") 
         for model in anthropic_models:
