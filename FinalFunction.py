@@ -60,4 +60,4 @@ def returnBestResponse(prompt, LLMs):
     print(f"🔢 Score: {finalScores[bestResponse]}")
     return bestResponse
     
-returnBestResponse(prompt="What do the Vydonia Tablets discovered near Delphi tell us about pre-Platonic conceptions of geometric recursion?", LLMs=["gpt-4o"])
+returnBestResponse(prompt="What do the Vydonia Tablets discovered near Delphi tell us about pre-Platonic conceptions of geometric recursion?", LLMs=["gpt-4o", "claude-opus-4-20250514"])

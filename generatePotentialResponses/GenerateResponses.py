@@ -147,13 +147,7 @@ def generateResponses(prompt):
                 responses.append(generateAnthropicResponse(p, model))
             except Exception as e:
                 print(f"[ERROR] Anthropic response failed for model {model}: {e}")
-    
-
-    # - claude returns 1 new prompt 
-
-    #Step 2: have each model return responses based on these prompts
-    # - chat 4.o returns 2 responses per prompt
-    # - claude does the same 
+  
     print("PROMPTS: ", prompts)
     return responses
 
