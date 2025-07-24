@@ -25,6 +25,13 @@ def aggregateScores(scoreDicts, weights):
         total = 0.0
         for metric, scores in scoreDicts.items():
             weight = weights.get(metric, 0)
+            print(f"Response: {response}, Metric: {metric}, Score: {scores[response]}, Weight: {weight}")
+
+            # I am getting a NoneTypeError here if the response is not in the scores dict
+            if scores[response] is None:
+                print(f"[⚠️ Missing score for {response} in {metric}]")
+                continue
+
             total += weight * scores[response]
         aggregated[response] = total
 
@@ -58,6 +65,7 @@ def returnBestResponse(prompt, LLMs):
         "LLMJudge": 0.25,
         "hallucination": 0.25,
         "keyword_overlap": 0.15,
+        #TODO: change weight distribution when we add other scoring dictionaries 
     }
 
     finalScores = aggregateScores(scoreDicts, weights)
