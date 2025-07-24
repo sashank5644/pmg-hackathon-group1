@@ -72,45 +72,15 @@ def chatAnalyzeResponse(prompt, response, model):
 
         return score_raw
 
-    except Exception as e:
-        return f"[ERROR evaluating with model {model}]: {str(e)}"
-
-def getAverageScores(scoreDict):
-    """
-    Calculates the average score for each response.
-    """
-    print("\n📊 Calculating average scores...")
-    averages = {
-        response: round(sum(scores)/len(scores), 2) if scores else None
-        for response, scores in scoreDict.items()
-    }
-
-    for response, avg in averages.items():
-        print(f"📈 Average score for response:\n{response[:60]}... -> {avg}")
-    return averages
-
-def getRawScores(prompt, responses, models): 
-    collectiveScores = {}
-
-    for response in responses: 
-        collectiveScores[response] = []
-
-        for model in models:
-            if model in openai_models:
-                scoreStr = chatAnalyzeResponse(prompt, response, model)
-                try:
-                    score = int(scoreStr)
-                    if 1 <= score <= 100:
-                        collectiveScores[response].append(score)
-                        print(f"✅ Parsed score from {model}: {score}")
-                    else:
-                        print(f"[⚠️ Invalid score from {model}]:", scoreStr)
-                except ValueError:
-                    print(f"[⚠️ Could not parse score from {model}]:", scoreStr)
-
-    return collectiveScores
+            # Try to extract a number from the response
+            results[response_text] = score_str
+        except Exception as e:
+            print(f"[ERROR] Scoring failed: {e}")
+       
+    return results
 
 
+# Run the example
 def getHallucinationCheckerScore(prompt, responses, models):
     rawScores = getRawScores(prompt, responses, models)
     averageScores = getAverageScores(rawScores)
