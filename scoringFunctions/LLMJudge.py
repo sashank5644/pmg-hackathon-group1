@@ -13,7 +13,11 @@ open_client = openai.OpenAI(api_key=open_api_key)
 openai_models = [
     "gpt-4o", "gpt-4o-mini", "o3", "o3-mini", "o3-mini-high", "o3-pro",
     "o4-mini", "gpt-4.5", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano",
-    "gpt-4", "o1", "o1-pro", "o1-mini", "gpt-image-1", "dall-e-3", "sora"
+    "gpt-4", "o1", "o1-pro", "o1-mini", "gpt-image-1"
+]
+
+noMaxTokens = [
+    "o3", "o3-mini", "o3-pro", "o4-mini", "o1", "o1-mini"
 ]
 
 def chatAnalyzeResponse(prompt, response, model):
@@ -72,15 +76,24 @@ def chatAnalyzeResponse(prompt, response, model):
         """
 
 
-        completion = open_client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": "You are an impartial LLM evaluator."},
-                {"role": "user", "content": evaluation_prompt}
-            ],
-            temperature=0.0,
-            max_tokens=10,
-        )
+        if model not in noMaxTokens:
+
+            completion = open_client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": "You are an impartial LLM evaluator."},
+                    {"role": "user", "content": evaluation_prompt}
+                ],
+                max_tokens=10,
+            )
+        else:
+            completion = open_client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": "You are an impartial LLM evaluator."},
+                    {"role": "user", "content": evaluation_prompt}
+                ],
+            )
 
         score_raw = completion.choices[0].message.content.strip()
         print(f"✅ Raw score received: '{score_raw}'")

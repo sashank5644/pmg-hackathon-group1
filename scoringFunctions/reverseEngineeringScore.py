@@ -16,10 +16,16 @@ anth_client = anthropic.Anthropic(api_key=anthropic_api_key)
 
 # Supported OpenAI models
 openai_models = [
-    "gpt-4o", "gpt-4o-mini", "o3", "o3-mini", "o3-mini-high", "o3-pro",
-    "o4-mini", "gpt-4.5", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano",
-    "gpt-4", "o1", "o1-pro", "o1-mini", "gpt-image-1", "dall-e-3", "sora"
+    "gpt-4o", "gpt-4o-mini", "o3", "o3-mini",
+    "o4-mini", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano",
+    "gpt-4", "o1", "o1-pro", "o1-mini"
 ]
+
+noMaxTokens = [
+    "o3", "o3-mini", "o3-pro", "o4-mini", "o1", "o1-mini"
+]
+
+#o3 and o3mini doesn't work for max tokens and o4 mini
 
 anthropic_models = [
     "claude-opus-4-20250514", "claude-sonnet-4-20250514", "claude-3-7-sonnet-20250219",
@@ -38,24 +44,44 @@ def getChatPrompt(response, model):
         str: a guessed version of the original prompt. 
     """
     try:
-        completion = client.chat.completions.create(
-            model=model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful assistant that analyzes model responses and tries to guess the original user prompt that could have generated the response."
-                },
-                {
-                    "role": "user",
-                    "content": f"""Given the following AI response, guess what the original user prompt might have been.
-                    Respond with only the guessed prompt — do not include any introduction or explanation. Do not include any quotations around the prompt. 
+        if model not in noMaxTokens:
 
-                    AI response:
-                    {response}"""
-                }
-            ],
-            max_tokens=100,
-        )
+            completion = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a helpful assistant that analyzes model responses and tries to guess the original user prompt that could have generated the response."
+                    },
+                    {
+                        "role": "user",
+                        "content": f"""Given the following AI response, guess what the original user prompt might have been.
+                        Respond with only the guessed prompt — do not include any introduction or explanation. Do not include any quotations around the prompt. 
+
+                        AI response:
+                        {response}"""
+                    }
+                ],
+                max_tokens=100,
+            )
+        else:
+            completion = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a helpful assistant that analyzes model responses and tries to guess the original user prompt that could have generated the response."
+                    },
+                    {
+                        "role": "user",
+                        "content": f"""Given the following AI response, guess what the original user prompt might have been.
+                        Respond with only the guessed prompt — do not include any introduction or explanation. Do not include any quotations around the prompt. 
+
+                        AI response:
+                        {response}"""
+                    }
+                ],
+            )
         return completion.choices[0].message.content.strip()
     except Exception as e:
         return f"[ERROR] with model {model}]: {str(e)}"

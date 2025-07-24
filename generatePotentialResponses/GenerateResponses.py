@@ -15,9 +15,13 @@ anthropic_models = [
     "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022"
 ]
 openai_models = [
-    "gpt-4o", "gpt-4o-mini", "o3", "o3-mini", "o3-mini-high", "o3-pro",
+    "gpt-4o", "gpt-4o-mini", "o3", "o3-mini", "o3-pro",
     "o4-mini", "gpt-4.5", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano",
-    "gpt-4", "o1", "o1-pro", "o1-mini", "gpt-image-1", "dall-e-3", "sora"
+    "gpt-4", "o1", "o1-pro", "o1-mini", "gpt-image-1", "dall-e-3"
+]
+
+noMaxTokens = [
+    "o3", "o3-mini", "o3-pro", "o4-mini", "o1", "o1-mini"
 ]
 
 def generateChatPrompt(prompt, model):
@@ -30,20 +34,35 @@ def generateChatPrompt(prompt, model):
     Returns:
         str: Rewritten version of the prompt. 
     """
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {
-                "role": "system",
-                "content": "You are a helpful assistant that rewords prompts to make them clearer, more engaging, or more effective for an AI model."
-            },
-            {
-                "role": "user",
-                "content": f"Rewrite the following prompt to make it better: {prompt} Respond with only the guessed prompt — do not include any introduction or explanation. Do not include any quotations around the prompt. "
-            }
-        ],
-        max_tokens=1024,
-    )
+    if model not in noMaxTokens:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant that rewords prompts to make them clearer, more engaging, or more effective for an AI model."
+                },
+                {
+                    "role": "user",
+                    "content": f"Rewrite the following prompt to make it better: {prompt} Respond with only the guessed prompt — do not include any introduction or explanation. Do not include any quotations around the prompt. "
+                }
+            ],
+            max_tokens=1024,
+        )
+    else:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant that rewords prompts to make them clearer, more engaging, or more effective for an AI model."
+                },
+                {
+                    "role": "user",
+                    "content": f"Rewrite the following prompt to make it better: {prompt} Respond with only the guessed prompt — do not include any introduction or explanation. Do not include any quotations around the prompt. "
+                }
+            ],
+        )
     return response.choices[0].message.content
 
 def generateChatResponse(prompt, model):
@@ -56,20 +75,35 @@ def generateChatResponse(prompt, model):
     Returns:
         str: Generated model response. 
     """
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {
-                "role": "system",
-                "content": "You are a helpful assistant that answers questions or completes tasks in a clear, concise, and useful manner."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-        max_tokens=1024,
-    )
+    if model not in noMaxTokens:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant that answers questions or completes tasks in a clear, concise, and useful manner."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            max_tokens=1024,
+        )
+    else:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant that answers questions or completes tasks in a clear, concise, and useful manner."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+        )
     return response.choices[0].message.content
 
 def generateAnthropicPrompt(prompt, model):

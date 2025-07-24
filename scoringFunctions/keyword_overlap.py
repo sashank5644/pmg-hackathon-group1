@@ -17,6 +17,12 @@ openai_models = [
     "gpt-4", "o1", "o1-pro", "o1-mini", "gpt-image-1", "dall-e-3", "sora"
 ]
 
+noMaxTokens = [
+    "o3", "o3-mini", "o3-pro", "o4-mini", "o1", "o1-mini"
+]
+
+
+
 anthropic_models = [
     "claude-opus-4-20250514", "claude-sonnet-4-20250514",
     "claude-3-7-sonnet-20250219", "claude-3-5-sonnet-20241022",
@@ -46,12 +52,17 @@ def extract_keywords_openai(client, text: str, top_k: int, model: str) -> List[s
         f"Identify the {top_k} most important topic words that appear exactly as written in the following text. "
         f"Only return words that are explicitly present in the text. List them as comma-separated keywords with no extra explanation:\n\n{text}"
     )
-    resp = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=200,
-        temperature=0.0
-    )
+    if model not in noMaxTokens:
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=200,
+        )
+    else:
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+        )
     content = resp.choices[0].message.content
     return [kw.strip() for kw in content.split(",") if kw.strip()]
 
@@ -86,13 +97,20 @@ def score_keywords_with_llm(
     )
 
     if provider == "openai":
-        resp = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=10,
-            temperature=0.0
-        )
-        content = resp.choices[0].message.content.strip()
+        if model not in noMaxTokens:
+
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=10,
+            )
+            content = resp.choices[0].message.content.strip()
+        else:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            content = resp.choices[0].message.content.strip()
     else:
         response = client.messages.create(
             model=model,
