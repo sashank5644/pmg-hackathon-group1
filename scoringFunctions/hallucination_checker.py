@@ -9,12 +9,6 @@ open_api_key = os.getenv("OPEN_AI_KEY")
 
 client = openai.OpenAI(api_key=open_api_key)
 
-openai_models = [
-    "gpt-4o", "gpt-4o-mini", "o3", "o3-mini", "o3-mini-high", "o3-pro",
-    "o4-mini", "gpt-4.5", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano",
-    "gpt-4", "o1", "o1-pro", "o1-mini", "gpt-image-1", "dall-e-3", "sora"
-]
-
 def chatAnalyzeResponse(prompt, response, model):
     """
     Uses an LLM to score a candidate response based on relevance, accuracy, completeness, and clarity.
@@ -93,16 +87,15 @@ def getRawScores(prompt, responses, models):
         collectiveScores[response] = []
 
         for model in models:
-            if model in openai_models:
                 scoreStr = chatAnalyzeResponse(prompt, response, model)
                 try:
                     score = int(scoreStr)
                     if 1 <= score <= 100:
                         collectiveScores[response].append(score)
                     else:
-                        print(f"[⚠️ Invalid score from {model}]:", scoreStr)
+                        print(f"[Invalid score from {model}]:", scoreStr)
                 except ValueError:
-                    print(f"[⚠️ Could not parse score from {model}]:", scoreStr)
+                    print(f"[Could not parse score from {model}]:", scoreStr)
 
     return collectiveScores
 
