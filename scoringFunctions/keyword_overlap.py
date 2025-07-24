@@ -49,8 +49,9 @@ def init_client(provider: str):
 
 def extract_keywords_openai(client, text: str, top_k: int, model: str) -> List[str]:
     prompt = (
-        f"Identify the {top_k} most important topic words that appear exactly as written in the following text. "
-        f"Only return words that are explicitly present in the text. List them as comma-separated keywords with no extra explanation:\n\n{text}"
+        f"Identify the {top_k} most important topic words that appear exactly as written "
+        f"in the following text. Only return words that are explicitly present in the text. "
+        f"List them as comma-separated keywords with no extra explanation:\n\n{text}"
     )
     if model not in noMaxTokens:
         resp = client.chat.completions.create(
@@ -69,14 +70,16 @@ def extract_keywords_openai(client, text: str, top_k: int, model: str) -> List[s
 
 def extract_keywords_anthropic(client, text: str, top_k: int, model: str) -> List[str]:
     prompt = (
-        f"Identify the {top_k} most important topic words that appear exactly as written in the following text. "
-        f"Only return words that are explicitly present in the text. List them as comma-separated keywords with no extra explanation:\n\n{text}"
+        f"Identify the {top_k} most important topic words that appear exactly as written "
+        f"in the following text. Only return words that are explicitly present in the text. "
+        f"List them as comma-separated keywords with no extra explanation:\n\n{text}"
     )
-    response = client.messages.create(
+    
+    response = client.completions.create(
         model=model,
-        max_tokens=256,
+        prompt=prompt,
+        max_tokens_to_sample=top_k * 3,
         temperature=0.0,
-        messages=[{"role": "user", "content": prompt}]
     )
     content = response.content[0].text.strip() if hasattr(response.content[0], 'text') else response.content
     return [kw.strip() for kw in content.split(",") if kw.strip()]
@@ -89,8 +92,9 @@ def score_keywords_with_llm(
     model: str,
     provider: str
 ) -> float:
-    prompt = (
-        f"Based on the following sets of keywords, give a relevance score from 0 to 100 indicating how related the response keywords are to the prompt keywords.\n"
+    scoring_prompt = (
+        f"Based on the following sets of keywords, give a relevance score from 0 to 100 "
+        f"indicating how related the response keywords are to the prompt keywords.\n"
         f"Prompt Keywords: {', '.join(prompt_keywords)}\n"
         f"Response Keywords: {', '.join(response_keywords)}\n"
         f"Just return a single numeric score."
@@ -112,11 +116,11 @@ def score_keywords_with_llm(
             )
             content = resp.choices[0].message.content.strip()
     else:
-        response = client.messages.create(
+        response = client.completions.create(
             model=model,
-            max_tokens=10,
-            temperature=0.0,
-            messages=[{"role": "user", "content": prompt}]
+            prompt=scoring_prompt,
+            max_tokens_to_sample=10,
+            temperature=0.0
         )
         content = response.content[0].text.strip() if hasattr(response.content[0], 'text') else response.content
 
@@ -190,6 +194,6 @@ if __name__ == "__main__":
         "With regenerative braking, EVs can recapture energy and extend their driving range.",
         "Blockchain technology ensures secure, decentralized transaction records."
     ]
-    models = ["gpt-4o", "claude-opus-4-20250514"]
+    models = ["gpt-4o"]
     scores = compute_keyword_similarity(prompt_text, sample_responses, models)
     print("Average keyword-overlap scores:", scores)
