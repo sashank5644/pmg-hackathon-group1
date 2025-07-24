@@ -40,7 +40,7 @@ def returnBestResponse(prompt, LLMs):
     # Step 2: calculate scoring dictionaries for each response according to each metric. 
     reverseEngineeringScores = getReverseEngineeringScore(prompt, potentialResponses, LLMs)
     LLMJudgeScores = getLLMJudgeScore(prompt, potentialResponses, LLMs)
-    #hallucinationCheckerScores = getHallucinationCheckerScore(prompt, potentialResponses, LLMs)
+    hallucinationCheckerScores = getHallucinationCheckerScore(prompt, potentialResponses, LLMs)
     keywordOverlapScores = compute_keyword_similarity(prompt, potentialResponses,LLMs)
     #TODO: add other scorings here from other metrics
 
@@ -48,7 +48,7 @@ def returnBestResponse(prompt, LLMs):
     scoreDicts = {
         "reverse": reverseEngineeringScores,
         "LLMJudge": LLMJudgeScores,
-        #"hallucination": hallucinationCheckerScores,
+        "hallucination": hallucinationCheckerScores,
         "keyword_overlap": keywordOverlapScores,
         #TODO: add other scoring dictionaries 
     }
@@ -78,5 +78,5 @@ def returnBestResponse(prompt, LLMs):
         "worst": {"response": worstResponse, "score": finalScores[worstResponse]},
     }
     
-returnBestResponse(prompt="Summarize the 9th Harry Potter book. ", LLMs=["gpt-4o"])
+returnBestResponse(prompt="HOw did elon musk develop chat gpt?", LLMs=["gpt-4o"])
 
