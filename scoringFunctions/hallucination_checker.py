@@ -10,7 +10,25 @@ load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 # Set up OpenAI client
 client = openai.OpenAI(api_key=openai_api_key)  # Replace with your actual key
+<<<<<<< HEAD
 def getHallucinationCheckerScore(prompt, potentialResponses, LLMs):
+=======
+def score_responses_for_hallucination(prompt, responses, models):
+    ## these were used for testing
+    '''
+    prompt = "Who is the famous USA President Jeffery Dahmer?"
+    responses = {
+        "Response A": "The capital of Australia is Sydney.",
+        "Response B": "He was never a president, but he was a serial killer.",
+        "Response C": "He was the 54th President of the United States.",
+        "Response D": "Jeffery Dahmer was a famous serial killer, not a president.",
+        "Response E": "Jeffery Dahmer was a well-known serial killer, but he was never a president of the USA.",
+        "Response F": "Jeffery Dahmer lost the presidential election in 1992.",
+        "Response G": "Water is wet.",
+        "Response H": "Jeffwey Danmer was not besident of Americuh",
+    }
+    '''
+>>>>>>> bdcceaa890ae071a4cd2fd2613ed6903f30ad582
     system_prompt = (
         "You will be given a prompt and a set of responses that an LLM could generate for that prompt. Please score each response based on its" \
         "factual accuracy. The score should be a number between 0 and 100, where 0 means completely inaccurate and 100 means completely accurate." \
@@ -26,7 +44,11 @@ def getHallucinationCheckerScore(prompt, potentialResponses, LLMs):
         "100: Completely accurate and relevant"
     )
     results = {}
+<<<<<<< HEAD
     for label, response_text in potentialResponses.items():
+=======
+    for response_text in responses:
+>>>>>>> bdcceaa890ae071a4cd2fd2613ed6903f30ad582
         user_prompt = f"""
 Prompt:
 {prompt}
@@ -35,6 +57,7 @@ Response:
 Rate the factual accuracy of the response out of 100. Respond only with the number."""
         try:
             chat_response = client.chat.completions.create(
+                ## currently set to use o3 model
                 model="o3",
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -48,17 +71,22 @@ Rate the factual accuracy of the response out of 100. Respond only with the numb
             if getattr(chat_response, 'choices', None) else ''
 
             # Try to extract a number from the response
+<<<<<<< HEAD
             print(score_str)
             results[label] = f"{score_str}/100"
+=======
+            results[response_text] = score_str
+>>>>>>> bdcceaa890ae071a4cd2fd2613ed6903f30ad582
         except Exception as e:
-            print(f"[ERROR] Scoring failed for {label}: {e}")
+            print(f"[ERROR] Scoring failed: {e}")
        
     return results
 
 
 # Run the example
-if __name__ == "__main__":
-    scores = score_responses_for_hallucination()
-    print("\nHallucination Scores:")
-    for label, score in scores.items():
-        print(f"{label}: {score}")
+def getHallucinationCheckerScore(prompt, responses, models):
+    results = score_responses_for_hallucination(prompt, responses, models)
+    for score in results:
+        print(f"{score}")
+    return results
+ 

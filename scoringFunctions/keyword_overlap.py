@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 # Install these packages:
 # pip install openai anthropic
 from openai import OpenAI
-from anthropic import Anthropic, AsyncAnthropic
+from anthropic import Anthropic
 
 # Load environment variables from .env
 load_dotenv()
@@ -24,9 +24,6 @@ anthropic_models = [
 
 
 def init_client(provider: str):
-    """
-    Initialize and return a client for the given provider ('openai' or 'anthropic').
-    """
     if provider == "openai":
         key = os.getenv("OPENAI_API_KEY")
         if not key:
@@ -44,12 +41,9 @@ def init_client(provider: str):
 
 
 def extract_keywords_openai(client, text: str, top_k: int, model: str) -> list[str]:
-    """
-    Use OpenAI chat completion to extract top_k keywords from text.
-    """
     prompt = (
-        f"Extract the {top_k} most important keywords from the following text, "
-        f"separated by commas, without any additional commentary:\n\n{text}"
+        f"Identify the {top_k} most important topic words that appear exactly as written in the following text. "
+        f"Only return words that are explicitly present in the text. List them as comma-separated keywords with no extra explanation:\n\n{text}"
     )
     resp = client.chat.completions.create(
         model=model,
@@ -62,23 +56,49 @@ def extract_keywords_openai(client, text: str, top_k: int, model: str) -> list[s
 
 
 def extract_keywords_anthropic(client, text: str, top_k: int, model: str) -> list[str]:
-    """
-    Use Anthropic Messages API to extract top_k keywords from text.
-    """
     prompt = (
-        f"Extract the {top_k} most important keywords from the following text, "
-        f"separated by commas, without any additional commentary:\n\n{text}"
+        f"Identify the {top_k} most important topic words that appear exactly as written in the following text. "
+        f"Only return words that are explicitly present in the text. List them as comma-separated keywords with no extra explanation:\n\n{text}"
     )
     response = client.messages.create(
         model=model,
         max_tokens=256,
-        temperature=0.7,
-        messages=[
-            {"role": "user", "content": prompt}
-        ]
+        temperature=0.0,
+        messages=[{"role": "user", "content": prompt}]
     )
-    content = response.content[0].text if hasattr(response.content[0], 'text') else response.content
+    content = response.content[0].text.strip() if hasattr(response.content[0], 'text') else response.content
     return [kw.strip() for kw in content.split(",") if kw.strip()]
+
+
+def score_keywords_with_llm(client, prompt_keywords: list[str], response_keywords: list[str], model: str, provider: str) -> float:
+    prompt = (
+        f"Based on the following sets of keywords, give a relevance score from 0 to 100 indicating how related the response keywords are to the prompt keywords.\n"
+        f"Prompt Keywords: {', '.join(prompt_keywords)}\n"
+        f"Response Keywords: {', '.join(response_keywords)}\n"
+        f"Just return a single numeric score."
+    )
+
+    if provider == "openai":
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=10,
+            temperature=0.0
+        )
+        content = resp.choices[0].message.content.strip()
+    else:
+        response = client.messages.create(
+            model=model,
+            max_tokens=10,
+            temperature=0.0,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        content = response.content[0].text.strip() if hasattr(response.content[0], 'text') else response.content
+
+    try:
+        return round(float(content))
+    except:
+        return 0.0
 
 
 def compute_keyword_similarity(
@@ -87,41 +107,26 @@ def compute_keyword_similarity(
     responses: list[str],
     top_k: int = 10
 ) -> dict[int, float]:
-    """
-    Determine provider by model_name, extract keywords, and compute similarity scores (0–100).
-
-    Returns a dict mapping response index to similarity score.
-    """
-    # Identify provider
     if model_name in openai_models:
         provider = "openai"
     elif model_name in anthropic_models:
         provider = "anthropic"
     else:
-        raise ValueError(f"Model '{model_name}' not supported for keyword extraction.")
+        raise ValueError(f"Model '{model_name}' not supported.")
 
-    # Initialize client
     client = init_client(provider)
-
-    # Choose extractor function
     extractor = extract_keywords_openai if provider == "openai" else extract_keywords_anthropic
 
-    # Extract keywords for prompt
-    prompt_keys = set(extractor(client, prompt, top_k, model_name))
-    print(f"Prompt keywords ({len(prompt_keys)}): {prompt_keys}")
+    prompt_keys = extractor(client, prompt, top_k, model_name)
+    print(f"Prompt keywords ({len(prompt_keys)}): {set(prompt_keys)}")
 
     scores: dict[int, float] = {}
-    for idx, resp_text in enumerate(responses):
-        resp_keys = set(extractor(client, resp_text, top_k, model_name))
-        print(f"Response {idx} keywords ({len(resp_keys)}): {resp_keys}")
+    for idx, resp in enumerate(responses):
+        resp_keys = extractor(client, resp, top_k, model_name)
+        print(f"Response {idx} keywords ({len(resp_keys)}): {set(resp_keys)}")
 
-        if not prompt_keys or not resp_keys:
-            score = 0.0
-        else:
-            intersection = prompt_keys.intersection(resp_keys)
-            score = len(intersection) / len(prompt_keys) * 100
-
-        scores[idx] = round(score, 2)
+        score = score_keywords_with_llm(client, prompt_keys, resp_keys, model_name, provider)
+        scores[idx] = score
 
     return scores
 
