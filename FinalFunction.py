@@ -54,11 +54,10 @@ def returnBestResponse(prompt, LLMs):
     }
 
     weights = {
-        "reverse": 0.3,
-        "LLMJudge": 0.3,
-        "hallucination": 0.2,
-        "keyword_overlap": 0.2,
-        #TODO: change weight distribution when we add other scoring dictionaries 
+        "reverse": 0.35,
+        "LLMJudge": 0.25,
+        "hallucination": 0.25,
+        "keyword_overlap": 0.15,
     }
 
     finalScores = aggregateScores(scoreDicts, weights)

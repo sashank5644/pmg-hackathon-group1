@@ -105,14 +105,14 @@ def score_keywords_with_llm(
 
             resp = client.chat.completions.create(
                 model=model,
-                messages=[{"role": "user", "content": prompt}],
+                messages=[{"role": "user", "content": scoring_prompt}],
                 max_tokens=10,
             )
             content = resp.choices[0].message.content.strip()
         else:
             resp = client.chat.completions.create(
                 model=model,
-                messages=[{"role": "user", "content": prompt}],
+                messages=[{"role": "user", "content": scoring_prompt}],
             )
             content = resp.choices[0].message.content.strip()
     else:
