@@ -67,7 +67,6 @@ def chatAnalyzeResponse(prompt, response, model):
         )
 
         score_raw = completion.choices[0].message.content.strip()
-        print(f"✅ Raw score received: '{score_raw}'")
 
 
         return score_raw
@@ -80,14 +79,11 @@ def getAverageScores(scoreDict):
     """
     Calculates the average score for each response.
     """
-    print("\n📊 Calculating average scores...")
     averages = {
         response: round(sum(scores)/len(scores), 2) if scores else None
         for response, scores in scoreDict.items()
     }
 
-    for response, avg in averages.items():
-        print(f"📈 Average score for response:\n{response[:60]}... -> {avg}")
     return averages
 
 def getRawScores(prompt, responses, models): 
@@ -103,7 +99,6 @@ def getRawScores(prompt, responses, models):
                     score = int(scoreStr)
                     if 1 <= score <= 100:
                         collectiveScores[response].append(score)
-                        print(f"✅ Parsed score from {model}: {score}")
                     else:
                         print(f"[⚠️ Invalid score from {model}]:", scoreStr)
                 except ValueError:
