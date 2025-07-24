@@ -34,12 +34,8 @@ def generateChatPrompt(prompt, model):
         model=model,
         messages=[
             {
-                "role": "system",
-                "content": "You are a helpful assistant that rewords prompts to make them clearer, more engaging, or more effective for an AI model."
-            },
-            {
                 "role": "user",
-                "content": f"Rewrite the following prompt to make it better: {prompt} Respond with only the guessed prompt — do not include any introduction or explanation. Do not include any quotations around the prompt. "
+                "content": f"You are a helpful assistant that rewords prompts to make them clearer, more engaging, or more effective for an AI model. Rewrite the following prompt to make it better: {prompt} Respond with only the guessed prompt — do not include any introduction or explanation. Do not include any quotations around the prompt. "
             }
         ],
         max_tokens=1024,
@@ -60,12 +56,8 @@ def generateChatResponse(prompt, model):
         model=model,
         messages=[
             {
-                "role": "system",
-                "content": "You are a helpful assistant that answers questions or completes tasks in a clear, concise, and useful manner."
-            },
-            {
                 "role": "user",
-                "content": prompt
+                "content": "You are a helpful assistant that answers questions or completes tasks in a clear, concise, and useful manner." + prompt
             }
         ],
         max_tokens=1024,
