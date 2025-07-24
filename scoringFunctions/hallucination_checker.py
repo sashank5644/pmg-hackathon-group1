@@ -42,7 +42,7 @@ def score_responses_for_hallucination(prompt, responses, models):
         "100: Completely accurate and relevant"
     )
     results = {}
-    for label, response_text in responses.items():
+    for response_text in responses:
         user_prompt = f"""
 Prompt:
 {prompt}
@@ -67,7 +67,7 @@ Rate the factual accuracy of the response out of 100. Respond only with the numb
             # Try to extract a number from the response
             results[response_text] = score_str
         except Exception as e:
-            print(f"[ERROR] Scoring failed for {label}: {e}")
+            print(f"[ERROR] Scoring failed: {e}")
        
     return results
 
@@ -75,7 +75,7 @@ Rate the factual accuracy of the response out of 100. Respond only with the numb
 # Run the example
 def getHallucinationCheckerScore(prompt, responses, models):
     results = score_responses_for_hallucination(prompt, responses, models)
-    for label, score in results.items():
-        print(f"{label}: {score}")
+    for score in results:
+        print(f"{score}")
     return results
  
